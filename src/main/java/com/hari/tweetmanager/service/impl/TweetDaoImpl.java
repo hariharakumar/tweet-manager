@@ -6,6 +6,8 @@ import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
+
 @Service
 public class TweetDaoImpl implements TweetDao {
 
@@ -16,10 +18,15 @@ public class TweetDaoImpl implements TweetDao {
 
     @Override
     public void getTweets() {
-        String authToken = authDao.getOAuthToken();
-        String oAuthConsumerKey = authDao.getOAuthConsumerKey();
-        String oAuthSignatureMethod = authDao.getoAuthSignatureMethod();
-        String oAuthVersion = authDao.getoAuthVersion();
+
+        String httpMethod = "GET";
+        String requestBaseUrl = "https://api.twitter.com/1.1/statuses/home_timeline.json";
+        //TODO : URL Encode query parameters
+        HashMap queryParams = new HashMap();
+        queryParams.put("count","5");
+        String oAuthSignature = authDao.getAuthHeader(httpMethod, requestBaseUrl, queryParams);
+
+        // Use the oAuthSignature to make the actual request
 
 
     }

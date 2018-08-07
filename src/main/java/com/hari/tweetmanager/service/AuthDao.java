@@ -1,12 +1,8 @@
 package com.hari.tweetmanager.service;
 
+import java.util.HashMap;
+
 public interface AuthDao {
 
-    public String getOAuthToken();
-
-    public String getoAuthVersion();
-
-    public String getoAuthSignatureMethod();
-
-    public String getOAuthConsumerKey();
+    public String getAuthHeader(String httpMethod, String requestUrl, HashMap<String, String> queryParams);
 }

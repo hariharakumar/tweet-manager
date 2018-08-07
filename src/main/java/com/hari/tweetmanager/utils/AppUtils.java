@@ -9,7 +9,7 @@ public class AppUtils {
 
     static Logger logger = Logger.getLogger(AppUtils.class);
 
-    public String get32ByteRandomString() {
+    public static String get32ByteRandomString() {
         byte[] bytes = new byte[32];
 
         try {
@@ -22,7 +22,7 @@ public class AppUtils {
         return bytes.toString();
     }
 
-    public Long getCurrentTimeInSecondsInEpoch() {
+    public static Long getCurrentTimeInSecondsInEpoch() {
         return System.currentTimeMillis() / 1000L;
     }
 }
