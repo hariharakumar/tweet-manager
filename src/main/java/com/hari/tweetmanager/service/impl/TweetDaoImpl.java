@@ -24,9 +24,9 @@ public class TweetDaoImpl implements TweetDao {
         //TODO : URL Encode query parameters
         HashMap queryParams = new HashMap();
         queryParams.put("count","5");
-        String oAuthSignature = authDao.getAuthHeader(httpMethod, requestBaseUrl, queryParams);
+        String authHeader = authDao.getAuthHeader(httpMethod, requestBaseUrl, queryParams);
 
-        // Use the oAuthSignature to make the actual request
+        // Use the authHeader to make the actual request
 
 
     }

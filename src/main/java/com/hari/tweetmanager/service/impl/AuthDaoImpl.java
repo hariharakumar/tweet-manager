@@ -41,7 +41,7 @@ public class AuthDaoImpl implements AuthDao {
         String consumerSecret            = env.getProperty("oauth.consumer.secret");
         String oAuthTokenSecret          = env.getProperty("oauth.token.secret");
 
-        String oAuthSignature             = "";
+        StringBuilder headerString        = new StringBuilder();
         StringBuilder encodeQueryParams   = new StringBuilder();
         StringBuilder parameterString     = new StringBuilder();
         StringBuilder signatureBaseString = new StringBuilder();
@@ -50,18 +50,37 @@ public class AuthDaoImpl implements AuthDao {
 
         try {
 
+            String oAuthConsumerKeyString     = URLEncoder.encode("oauth_consumer_key","UTF-8");
+            String oAuthNonceString           = URLEncoder.encode("oauth_nonce","UTF-8");
+            String oAuthSignatureKeyString    = URLEncoder.encode("oauth_signature","UTF-8");
+            String oAuthSignatureMethodString = URLEncoder.encode("oauth_signature_method","UTF-8");
+            String oAuthTimeStampString       = URLEncoder.encode("oauth_timestamp","UTF-8");
+            String oAuthTokenString           = URLEncoder.encode("oauth_token","UTF-8");
+            String oAuthVersionString         = URLEncoder.encode("oauth_version","UTF-8");
+
+            String encodedConsumerKey          = URLEncoder.encode(oAuthConsumerKey,"UTF-8");
+            String encodedNonceString          = URLEncoder.encode(random32ByteString,"UTF-8");
+            String encodedOAuthSignatureMethod = URLEncoder.encode(oAuthSignatureMethod,"UTF-8");
+            String encodedEpochTime            = URLEncoder.encode(String.valueOf(currentTimeInSecondsInEpoch),"UTF-8");
+            String encodedOAuthToken           = URLEncoder.encode(oAuthToken,"UTF-8");
+            String encodedOAuthVersion         = URLEncoder.encode(oAuthVersion,"UTF-8");
+
+            String singleQuote                 = "\"";
+            String commaAndSpace               = ", ";
+
+
             for (String key : queryParamsKeys) {
-                encodeQueryParams.append(URLEncoder.encode(key, "UTF-8") + "=" + URLEncoder.encode(queryParams.get(key), "UTF-8")).append("&");
+                encodeQueryParams.append(URLEncoder.encode(key, "UTF-8")).append("=").append(URLEncoder.encode(queryParams.get(key), "UTF-8")).append("&");
             }
 
             // There will be an & at the end of queryParamsString
             parameterString.append(encodeQueryParams).
-                            append(URLEncoder.encode("oauth_consumer_key","UTF-8") + "=" + URLEncoder.encode(oAuthConsumerKey,"UTF-8")).append("&").
-                            append(URLEncoder.encode("oauth_nonce","UTF-8") + "=" + URLEncoder.encode(random32ByteString,"UTF-8")).append("&").
-                            append(URLEncoder.encode("oauth_signature_method","UTF-8") + "=" + URLEncoder.encode(oAuthSignatureMethod,"UTF-8")).append("&").
-                            append(URLEncoder.encode("oauth_timestamp","UTF-8") + "=" + URLEncoder.encode(String.valueOf(currentTimeInSecondsInEpoch),"UTF-8")).append("&").
-                            append(URLEncoder.encode("oauth_token","UTF-8") + "=" + URLEncoder.encode(oAuthToken,"UTF-8")).append("&").
-                            append(URLEncoder.encode("oauth_version","UTF-8") + "=" + URLEncoder.encode(oAuthVersion,"UTF-8"));
+                            append(oAuthConsumerKeyString + "=" + encodedConsumerKey).append("&").
+                            append(oAuthNonceString + "=" + encodedNonceString).append("&").
+                            append(oAuthSignatureMethodString + "=" + encodedOAuthSignatureMethod).append("&").
+                            append(oAuthTimeStampString + "=" + encodedEpochTime).append("&").
+                            append(oAuthTokenString + "=" + encodedOAuthToken).append("&").
+                            append(oAuthVersionString + "=" + encodedOAuthVersion);
 
             // Signature base string should contain only 2 &
             signatureBaseString.append(httpMethod.toUpperCase()).append("&").
@@ -76,8 +95,18 @@ public class AuthDaoImpl implements AuthDao {
             macSha1.init(new SecretKeySpec(signingKey.getBytes(), "HmacSHA1"));
             macSha1.update(signatureBaseString.toString().getBytes());
 
-            byte[] res     = macSha1.doFinal();
-            oAuthSignature = String.valueOf(Base64Coder.encode(res));
+            byte[] res                   = macSha1.doFinal();
+            String encodedOAuthSignature = URLEncoder.encode(String.valueOf(Base64Coder.encode(res)),"UTF-8");
+
+            // Append all 7 keys to final headerString
+            headerString.append("OAuth ").
+                         append(oAuthConsumerKeyString).append("=").append(singleQuote).append(encodedConsumerKey).append(singleQuote).append(commaAndSpace).
+                         append(oAuthNonceString).append("=").append(singleQuote).append(encodedNonceString).append(singleQuote).append(commaAndSpace).
+                         append(oAuthSignatureKeyString).append("=").append(singleQuote).append(encodedOAuthSignature).append(singleQuote).append(commaAndSpace).
+                         append(oAuthSignatureMethodString).append("=").append(singleQuote).append(encodedOAuthSignatureMethod).append(singleQuote).append(commaAndSpace).
+                         append(oAuthTimeStampString).append("=").append(singleQuote).append(encodedEpochTime).append(singleQuote).append(commaAndSpace).
+                         append(oAuthTokenString).append("=").append(singleQuote).append(encodedOAuthToken).append(singleQuote).append(commaAndSpace).
+                         append(oAuthVersionString).append("=").append(singleQuote).append(encodedOAuthVersion).append(singleQuote);
 
         }
         catch (UnsupportedEncodingException use) {
@@ -90,7 +119,7 @@ public class AuthDaoImpl implements AuthDao {
             logger.error("Invalid Key Exception : " + ike.getMessage());
         }
 
-        return oAuthSignature;
+        return headerString.toString();
     }
 
 
