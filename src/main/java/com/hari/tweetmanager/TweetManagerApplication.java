@@ -27,6 +27,8 @@ public class TweetManagerApplication implements CommandLineRunner {
 	public void run(String... args) throws Exception {
 		System.out.println(helloService.getMessage());
 
+		tweetDao.getTweets(5);
+
 		tweetDao.getTweets();
 	}
 }
