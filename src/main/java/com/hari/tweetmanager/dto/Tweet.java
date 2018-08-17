@@ -2,8 +2,8 @@ package com.hari.tweetmanager.dto;
 
 public class Tweet {
 
-    String createdAt;
-    Long id;
+    String tweetCreatedAt;
+    Long tweetId;
     String text;
     String source;
     String language;
@@ -17,20 +17,20 @@ public class Tweet {
     This came into place when twitter increased its tweet size to 280 chars*/
 
 
-    public String getCreatedAt() {
-        return createdAt;
+    public String getTweetCreatedAt() {
+        return tweetCreatedAt;
     }
 
-    public void setCreatedAt(String createdAt) {
-        this.createdAt = createdAt;
+    public void setTweetCreatedAt(String tweetCreatedAt) {
+        this.tweetCreatedAt = tweetCreatedAt;
     }
 
-    public Long getId() {
-        return id;
+    public Long getTweetId() {
+        return tweetId;
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    public void setTweetId(Long tweetId) {
+        this.tweetId = tweetId;
     }
 
     public String getText() {

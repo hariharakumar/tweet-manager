@@ -2,25 +2,25 @@ package com.hari.tweetmanager.dto;
 
 // This represents entity that tweets - these tweets appear in a users timeline
 public class User {
-    Long id;
+    Long userId;
     String name;
     String screenName;
     String location;
     String description;
     Url[] urls; // URL that user will be sent to when clicked on link in the tweet
-    String createdAt; // Day on which the account was created.
-    String favoritesCount;
-    String statusesCount;
+    String userCreatedAt; // Day on which the account was created.
+    Long favoritesCount;
+    Long statusesCount;
     Long followersCount;
     Long friendsCount;
     String language;
 
-    public Long getId() {
-        return id;
+    public Long getUserId() {
+        return userId;
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 
     public String getName() {
@@ -63,27 +63,27 @@ public class User {
         this.urls = urls;
     }
 
-    public String getCreatedAt() {
-        return createdAt;
+    public String getUserCreatedAt() {
+        return userCreatedAt;
     }
 
-    public void setCreatedAt(String createdAt) {
-        this.createdAt = createdAt;
+    public void setUserCreatedAt(String userCreatedAt) {
+        this.userCreatedAt = userCreatedAt;
     }
 
-    public String getFavoritesCount() {
+    public Long getFavoritesCount() {
         return favoritesCount;
     }
 
-    public void setFavoritesCount(String favoritesCount) {
+    public void setFavoritesCount(Long favoritesCount) {
         this.favoritesCount = favoritesCount;
     }
 
-    public String getStatusesCount() {
+    public Long getStatusesCount() {
         return statusesCount;
     }
 
-    public void setStatusesCount(String statusesCount) {
+    public void setStatusesCount(Long statusesCount) {
         this.statusesCount = statusesCount;
     }
 

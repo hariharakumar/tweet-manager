@@ -1,2 +1,56 @@
--- List commands needed for database tables creation
+-- Commands needed for database tables creation
 
+CREATE TABLE `tweets` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `tweetCreatedAt` varchar(256) NOT NULL,
+  `tweetId` bigint(20) unsigned NOT NULL,
+  `userId` bigint(20) unsigned NOT NULL,
+  `text` text,
+  `source` varchar(1024) DEFAULT NULL,
+  `language` varchar(20) DEFAULT NULL,
+  `retweetCount` bigint(20) NOT NULL,
+  `favoriteCount` bigint(20) NOT NULL,
+  `favorited` bit(1) DEFAULT b'0',
+  `retweeted` bit(1) DEFAULT b'0',
+  `truncated` bit(1) DEFAULT b'0',
+  `createdAt` varchar(256) DEFAULT NULL,
+  `updatedAt` varchar(256) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `tweetId` (`tweetId`),
+  CONSTRAINT `fk_tweets_users_userId` FOREIGN KEY (`userId`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE `users` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `userId` bigint(20) unsigned NOT NULL,
+  `name` varchar(1024) DEFAULT NULL,
+  `screenName` varchar(1024) DEFAULT NULL,
+  `location` varchar(1024) DEFAULT NULL,
+  `description` text,
+  `userCreatedAt` varchar(256) DEFAULT NULL,
+  `favoritesCount` bigint(20) NOT NULL,
+  `statusesCount` bigint(20) NOT NULL,
+  `followersCount` bigint(20) NOT NULL,
+  `friendsCount` bigint(20) NOT NULL,
+  `language` varchar(20) DEFAULT NULL,
+  `createdAt` varchar(256) DEFAULT NULL,
+  `updatedAt` varchar(256) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `userId` (`userId`),
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE `urls` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `url` varchar(1024) DEFAULT NULL,
+  `expandedUrl` varchar(1024) DEFAULT NULL,
+  `displayUrl` varchar(1024) DEFAULT NULL,
+  `userId` bigint(20) unsigned DEFAULT NULL,
+  `tweetId` bigint(20) unsigned DEFAULT NULL,
+  `createdAt` varchar(256) DEFAULT NULL,
+  `updatedAt` varchar(256) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `userId` (`userId`),
+  KEY `tweetId` (`tweetId`),
+  CONSTRAINT `fk_urls_users_userId` FOREIGN KEY (`userId`) REFERENCES `users` (`id`),
+  CONSTRAINT `fk_urls_tweets_tweetId` FOREIGN KEY (`tweetId`) REFERENCES `tweets` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
