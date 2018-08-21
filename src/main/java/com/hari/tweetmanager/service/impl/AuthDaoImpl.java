@@ -2,7 +2,8 @@ package com.hari.tweetmanager.service.impl;
 
 import com.hari.tweetmanager.service.AuthDao;
 
-import com.hari.tweetmanager.utils.AppUtils;
+import com.hari.tweetmanager.utils.StringUtils;
+import com.hari.tweetmanager.utils.DateTimeUtils;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
@@ -35,8 +36,8 @@ public class AuthDaoImpl implements AuthDao {
 
         String oAuthConsumerKey          = env.getProperty("oauth.consumer.key");
         String oAuthToken                = env.getProperty("oauth.token");
-        String random32ByteString        = AppUtils.get32ByteRandomString();
-        Long currentTimeInSecondsInEpoch = AppUtils.getCurrentTimeInSecondsInEpoch();
+        String random32ByteString        = StringUtils.get32ByteRandomString();
+        Long currentTimeInSecondsInEpoch = DateTimeUtils.getCurrentTimeInSecondsInEpoch();
 
         String consumerSecret            = env.getProperty("oauth.consumer.secret");
         String oAuthTokenSecret          = env.getProperty("oauth.token.secret");
@@ -110,13 +111,13 @@ public class AuthDaoImpl implements AuthDao {
 
         }
         catch (UnsupportedEncodingException use) {
-            logger.error("Error while encoding query params : " + use.getMessage());
+            logger.error("Error while encoding query params : " , use);
         }
         catch (NoSuchAlgorithmException nse) {
-            logger.error("HMAC Algorithm cannot be foudn : " + nse.getMessage());
+            logger.error("HMAC Algorithm cannot be foudn : " , nse);
         }
         catch (InvalidKeyException ike) {
-            logger.error("Invalid Key Exception : " + ike.getMessage());
+            logger.error("Invalid Key Exception : " , ike);
         }
 
         return headerString.toString();

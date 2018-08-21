@@ -1,5 +1,7 @@
 package com.hari.tweetmanager.dto;
 
+import java.util.List;
+
 // This represents entity that tweets - these tweets appear in a users timeline
 public class User {
     Long userId;
@@ -7,7 +9,7 @@ public class User {
     String screenName;
     String location;
     String description;
-    Url[] urls; // URL that user will be sent to when clicked on link in the tweet
+    List<Url> urls; // URL that user will be sent to when clicked on link in the tweet
     String userCreatedAt; // Day on which the account was created.
     Long favoritesCount;
     Long statusesCount;
@@ -55,11 +57,11 @@ public class User {
         this.description = description;
     }
 
-    public Url[] getUrls() {
+    public List<Url> getUrls() {
         return urls;
     }
 
-    public void setUrls(Url[] urls) {
+    public void setUrls(List<Url> urls) {
         this.urls = urls;
     }
 

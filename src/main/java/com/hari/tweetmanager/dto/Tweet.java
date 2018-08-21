@@ -1,5 +1,7 @@
 package com.hari.tweetmanager.dto;
 
+import java.util.List;
+
 public class Tweet {
 
     String tweetCreatedAt;
@@ -8,7 +10,7 @@ public class Tweet {
     String source;
     String language;
     User user;
-    Url[] urls;
+    List<Url> urls;
     Long retweetCount;
     Long favoriteCount;
     Boolean favorited;
@@ -65,11 +67,11 @@ public class Tweet {
         this.user = user;
     }
 
-    public Url[] getUrls() {
+    public List<Url> getUrls() {
         return urls;
     }
 
-    public void setUrls(Url[] urls) {
+    public void setUrls(List<Url> urls) {
         this.urls = urls;
     }
 

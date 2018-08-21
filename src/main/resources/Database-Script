@@ -36,7 +36,7 @@ CREATE TABLE `users` (
   `createdAt` varchar(256) DEFAULT NULL,
   `updatedAt` varchar(256) DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `userId` (`userId`),
+  KEY `userId` (`userId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 CREATE TABLE `urls` (

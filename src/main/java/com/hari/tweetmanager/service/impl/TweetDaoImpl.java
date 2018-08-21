@@ -2,6 +2,10 @@ package com.hari.tweetmanager.service.impl;
 
 import com.amazonaws.util.json.JSONArray;
 import com.amazonaws.util.json.JSONException;
+import com.amazonaws.util.json.JSONObject;
+import com.hari.tweetmanager.dto.Tweet;
+import com.hari.tweetmanager.dto.Url;
+import com.hari.tweetmanager.dto.User;
 import com.hari.tweetmanager.service.AuthDao;
 import com.hari.tweetmanager.service.TweetDao;
 import com.sun.jersey.api.client.Client;
@@ -16,7 +20,9 @@ import javax.ws.rs.core.UriBuilder;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URLEncoder;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 @Service
 public class TweetDaoImpl implements TweetDao {
@@ -54,7 +60,7 @@ public class TweetDaoImpl implements TweetDao {
 
         }
         catch (JSONException jse) {
-            logger.error("JSON Parse Exception : " + jse.getMessage());
+            logger.error("JSON Parse Exception : " , jse);
         }
     }
 
@@ -98,14 +104,12 @@ public class TweetDaoImpl implements TweetDao {
 
             String tweetData = sendGetRequest(requestBaseUrl, queryParams, httpMethod);
 
-            JSONArray tweetArray = new JSONArray(tweetData);
-            System.out.println("Tweets Count : " + tweetArray.length());
+            JSONArray tweets = new JSONArray(tweetData);
+            System.out.println("Tweets Count : " + tweets.length());
         }
         catch (JSONException jse) {
-            logger.error("JSON Parse Exception : " + jse.getMessage());
+            logger.error("JSON Parse Exception : ", jse);
         }
-
-
 
     }
 
@@ -141,4 +145,99 @@ public class TweetDaoImpl implements TweetDao {
 
         return tweetData;
     }
+
+    private void storeTweetsInDatabase(JSONArray tweets) {
+
+        for(int i=0 ; i< tweets.length(); i++) {
+
+            try {
+                JSONObject tweetsJSONObject = tweets.getJSONObject(i);
+
+                Tweet tweet      = getTweetData(tweetsJSONObject);
+
+            }
+            catch (JSONException jse) {
+                logger.error("Error while parsing tweet json object" , jse);
+            }
+        }
+
+
+    }
+
+    private Tweet getTweetData(JSONObject inputTweet) throws JSONException {
+
+        Tweet tweet = new Tweet();
+
+        tweet.setTweetCreatedAt(inputTweet.getString("created_at"));
+        tweet.setTweetId(inputTweet.getLong("id"));
+        tweet.setText(inputTweet.getString("text"));
+        tweet.setSource(inputTweet.getString("source"));
+        tweet.setLanguage(inputTweet.getString("lang"));
+
+        JSONArray urlArray = inputTweet.getJSONObject("entities").getJSONArray("urls");
+        List<Url> urls = getUrls(urlArray);
+        tweet.setUrls(urls);
+
+        JSONObject userObjectInTweet = inputTweet.getJSONObject("user");
+        User user = getUser(userObjectInTweet);
+        tweet.setUser(user);
+
+        tweet.setRetweetCount(inputTweet.getLong("retweet_count"));
+        tweet.setFavoriteCount(inputTweet.getLong("favorite_count"));
+        tweet.setFavorited(inputTweet.getBoolean("favorited"));
+        tweet.setRetweeted(inputTweet.getBoolean("retweeted"));
+        tweet.setTruncated(inputTweet.getBoolean("truncated"));
+
+        return tweet;
+    }
+
+    private List<Url> getUrls(JSONArray urlArray) throws JSONException {
+
+        List<Url> urls = new ArrayList<>();
+
+        for(int i=0; i < urlArray.length(); i++) {
+
+            Url url = new Url();
+            JSONObject urlObject = urlArray.getJSONObject(i);
+
+            url.setUrl(urlObject.getString("url"));
+            url.setDisplayUrl(urlObject.getString("display_url"));
+            url.setExpandedUrl(urlObject.getString("expanded_url"));
+
+            urls.add(url);
+        }
+
+        return urls;
+    }
+
+    private User getUser(JSONObject userObjectInTweet) throws JSONException {
+
+        User user = new User();
+
+        user.setUserId(userObjectInTweet.getLong("id"));
+
+        /* TODO : Before building entire user object, check to see if user already exists in DB - If user already exists
+           there is no need to create the user object again */
+
+        user.setName(userObjectInTweet.getString("name"));
+        user.setScreenName(userObjectInTweet.getString("screen_name"));
+        user.setLocation(userObjectInTweet.getString("location"));
+        user.setDescription(userObjectInTweet.getString("description"));
+
+        JSONArray urlArray = userObjectInTweet.getJSONObject("entities").getJSONObject("url").getJSONArray("urls");
+        List<Url> urls = getUrls(urlArray);
+
+        user.setUrls(urls);
+
+        user.setUserCreatedAt(userObjectInTweet.getString("created_at"));
+        user.setFavoritesCount(userObjectInTweet.getLong("favourites_count"));
+        user.setStatusesCount(userObjectInTweet.getLong("statuses_count"));
+        user.setFollowersCount(userObjectInTweet.getLong("followers_count"));
+        user.setFriendsCount(userObjectInTweet.getLong("friends_count"));
+        user.setLanguage(userObjectInTweet.getString("lang"));
+
+        return user;
+    }
+
+
 }
