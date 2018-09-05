@@ -1,4 +1,7 @@
 -- Commands needed for database tables creation
+-- If deletion needed - do it in this order :
+-- 1. urls 2. tweets 3. users
+--
 
 CREATE TABLE `tweets` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -13,10 +16,11 @@ CREATE TABLE `tweets` (
   `favorited` bit(1) DEFAULT b'0',
   `retweeted` bit(1) DEFAULT b'0',
   `truncated` bit(1) DEFAULT b'0',
-  `createdAt` varchar(256) DEFAULT NULL,
-  `updatedAt` varchar(256) DEFAULT NULL,
+  `createdAt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updatedAt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `tweetId` (`tweetId`),
+  KEY `fk_tweets_users_userId` (`userId`),
   CONSTRAINT `fk_tweets_users_userId` FOREIGN KEY (`userId`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -33,12 +37,13 @@ CREATE TABLE `users` (
   `followersCount` bigint(20) NOT NULL,
   `friendsCount` bigint(20) NOT NULL,
   `language` varchar(20) DEFAULT NULL,
-  `createdAt` varchar(256) DEFAULT NULL,
-  `updatedAt` varchar(256) DEFAULT NULL,
+  `createdAt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updatedAt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `userId` (`userId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+-- A url can be associated to either a tweet or a user - so if one is null other is not null
 CREATE TABLE `urls` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `url` varchar(1024) DEFAULT NULL,
@@ -46,11 +51,11 @@ CREATE TABLE `urls` (
   `displayUrl` varchar(1024) DEFAULT NULL,
   `userId` bigint(20) unsigned DEFAULT NULL,
   `tweetId` bigint(20) unsigned DEFAULT NULL,
-  `createdAt` varchar(256) DEFAULT NULL,
-  `updatedAt` varchar(256) DEFAULT NULL,
+  `createdAt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updatedAt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `userId` (`userId`),
   KEY `tweetId` (`tweetId`),
-  CONSTRAINT `fk_urls_users_userId` FOREIGN KEY (`userId`) REFERENCES `users` (`id`),
-  CONSTRAINT `fk_urls_tweets_tweetId` FOREIGN KEY (`tweetId`) REFERENCES `tweets` (`id`)
+  CONSTRAINT `fk_urls_tweets_tweetId` FOREIGN KEY (`tweetId`) REFERENCES `tweets` (`id`),
+  CONSTRAINT `fk_urls_users_userId` FOREIGN KEY (`userId`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;

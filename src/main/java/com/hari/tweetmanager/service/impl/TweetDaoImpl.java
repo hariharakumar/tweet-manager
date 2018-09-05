@@ -12,18 +12,18 @@ import com.hari.tweetmanager.service.TweetMapper;
 import com.hari.tweetmanager.utils.HttpUtils;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.WebResource;
-import com.sun.jersey.core.util.MultivaluedMapImpl;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.PreparedStatementCreator;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Service;
 
-import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.UriBuilder;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
-import java.net.URLEncoder;
-import java.util.ArrayList;
+import java.sql.*;
 import java.util.HashMap;
 import java.util.List;
 
@@ -40,6 +40,21 @@ public class TweetDaoImpl implements TweetDao {
     JdbcTemplate jdbcTemplate;
 
     static Logger logger = Logger.getLogger(TweetDaoImpl.class);
+
+    public final String SQL_USER_CREATE =
+            "insert into `users`(userId,name,screenName,location, description, userCreatedAt, " +
+                    "favoritesCount,statusesCount,followersCount,friendsCount,language,)" +
+                    " values(?,?,?,?,?,?,?)";
+
+    public final String SQL_URL_CREATE =
+            "insert into `urls`(url,expandedUrl,displayUrl,userId, tweetId" +
+                    " values(?,?,?,?,?)";
+
+    public final String SQL_TWEET_CREATE =
+            "insert into `tweets`(tweetCreatedAt,tweetId,userId,text, source, language, " +
+                    "retweetCount,favoriteCount,favorited,retweeted,truncated,)" +
+                    " values(?,?,?,?,?,?,?)";
+
 
     @Override
     public void getTweets(int count) {
@@ -141,10 +156,127 @@ public class TweetDaoImpl implements TweetDao {
 
                 Tweet tweet = tweetMapper.convertToTweetObject(tweetsJSONObject);
 
+                long userId = storeUser(tweet.getUser());
+
+                long tweetId = storeTweet(tweet, userId);
+
+                storeUrls(tweet.getUrls(), null, tweetId);
+
             }
             catch (JSONException jse) {
                 logger.error("Error while parsing tweet json object" , jse);
             }
         }
+    }
+
+    // Create user first - pass that Id to save URL's and also to save tweets
+    public long storeUser(User user) {
+
+        // After storing user in DB - call storeURL to store the URL associated to the user - get Id and store it in user table
+
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+
+        jdbcTemplate.update(new PreparedStatementCreator() {
+            @Override
+            public PreparedStatement createPreparedStatement(Connection connection) throws SQLException {
+                PreparedStatement ps = connection.prepareStatement(SQL_USER_CREATE, Statement.RETURN_GENERATED_KEYS);
+                ps.setLong(1, user.getUserId());
+                ps.setString(2, user.getName());
+                ps.setString(3, user.getScreenName());
+                ps.setString(4, user.getLocation());
+                ps.setString(5, user.getDescription());
+                ps.setString(6, user.getUserCreatedAt());
+                ps.setLong(7, user.getFavoritesCount());
+                ps.setLong(8, user.getStatusesCount());
+                ps.setLong(9, user.getFollowersCount());
+                ps.setLong(10, user.getFriendsCount());
+                return ps;
+            }
+        }, keyHolder);
+
+        Long userId = keyHolder.getKey().longValue();
+
+        List<Url> userUrls = user.getUrls();
+
+        storeUrls(userUrls, userId, null);
+
+        return userId;
+    }
+
+    public void storeUrls(List<Url> urlList, Long userId, Long tweetId) {
+
+        // url's are associated to a user
+        if(userId != null) {
+
+            for (Url url : urlList) {
+
+                jdbcTemplate.update(new PreparedStatementCreator() {
+                    @Override
+                    public PreparedStatement createPreparedStatement(Connection connection) throws SQLException {
+
+                        PreparedStatement ps = connection.prepareStatement(SQL_URL_CREATE);
+
+                        ps.setString(1, url.getUrl());
+                        ps.setString(2, url.getExpandedUrl());
+                        ps.setString(3, url.getDisplayUrl());
+                        ps.setLong(4, userId);
+                        ps.setNull(5, Types.NULL);
+
+                        return ps;
+                    }
+                });
+            }
+        }
+
+        // url's are associated to a tweet
+        if(tweetId != null) {
+
+            for (Url url : urlList) {
+
+                jdbcTemplate.update(new PreparedStatementCreator() {
+                    @Override
+                    public PreparedStatement createPreparedStatement(Connection connection) throws SQLException {
+
+                        PreparedStatement ps = connection.prepareStatement(SQL_URL_CREATE);
+
+                        ps.setString(1, url.getUrl());
+                        ps.setString(2, url.getExpandedUrl());
+                        ps.setString(3, url.getDisplayUrl());
+                        ps.setNull(4, Types.NULL);
+                        ps.setLong(5, tweetId);
+
+                        return ps;
+                    }
+                });
+            }
+        }
+    }
+
+    public long storeTweet(Tweet tweet, Long userId) {
+        // Save userId in tweets table
+
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+
+        jdbcTemplate.update(new PreparedStatementCreator() {
+            @Override
+            public PreparedStatement createPreparedStatement(Connection connection) throws SQLException {
+                PreparedStatement ps = connection.prepareStatement(SQL_TWEET_CREATE, Statement.RETURN_GENERATED_KEYS);
+                ps.setString(1, tweet.getTweetCreatedAt());
+                ps.setLong(2, tweet.getTweetId());
+                ps.setLong(3, (userId));
+                ps.setString(4, tweet.getText());
+                ps.setString(5, tweet.getSource());
+                ps.setString(6, tweet.getLanguage());
+                ps.setLong(7, tweet.getRetweetCount());
+                ps.setLong(8, tweet.getFavoriteCount());
+                ps.setBoolean(9, tweet.getRetweeted());
+                ps.setBoolean(10, tweet.getFavorited());
+                return ps;
+            }
+        }, keyHolder);
+
+        long tweetId = keyHolder.getKey().longValue();
+
+        return tweetId;
     }
 }
