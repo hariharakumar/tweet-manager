@@ -14,6 +14,7 @@ import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.WebResource;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementCreator;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -43,17 +44,17 @@ public class TweetDaoImpl implements TweetDao {
 
     public final String SQL_USER_CREATE =
             "insert into `users`(userId,name,screenName,location, description, userCreatedAt, " +
-                    "favoritesCount,statusesCount,followersCount,friendsCount,language,)" +
-                    " values(?,?,?,?,?,?,?)";
+                    "favoritesCount,statusesCount,followersCount,friendsCount,language)" +
+                    " values(?,?,?,?,?,?,?,?,?,?,?)";
 
     public final String SQL_URL_CREATE =
-            "insert into `urls`(url,expandedUrl,displayUrl,userId, tweetId" +
+            "insert into `urls`(url,expandedUrl,displayUrl,userId, tweetId)" +
                     " values(?,?,?,?,?)";
 
     public final String SQL_TWEET_CREATE =
             "insert into `tweets`(tweetCreatedAt,tweetId,userId,text, source, language, " +
-                    "retweetCount,favoriteCount,favorited,retweeted,truncated,)" +
-                    " values(?,?,?,?,?,?,?)";
+                    "retweetCount,favoriteCount,favorited,retweeted,truncated)" +
+                    " values(?,?,?,?,?,?,?,?,?,?,?)";
 
 
     @Override
@@ -176,23 +177,30 @@ public class TweetDaoImpl implements TweetDao {
 
         KeyHolder keyHolder = new GeneratedKeyHolder();
 
-        jdbcTemplate.update(new PreparedStatementCreator() {
-            @Override
-            public PreparedStatement createPreparedStatement(Connection connection) throws SQLException {
-                PreparedStatement ps = connection.prepareStatement(SQL_USER_CREATE, Statement.RETURN_GENERATED_KEYS);
-                ps.setLong(1, user.getUserId());
-                ps.setString(2, user.getName());
-                ps.setString(3, user.getScreenName());
-                ps.setString(4, user.getLocation());
-                ps.setString(5, user.getDescription());
-                ps.setString(6, user.getUserCreatedAt());
-                ps.setLong(7, user.getFavoritesCount());
-                ps.setLong(8, user.getStatusesCount());
-                ps.setLong(9, user.getFollowersCount());
-                ps.setLong(10, user.getFriendsCount());
-                return ps;
-            }
-        }, keyHolder);
+        try {
+            jdbcTemplate.update(new PreparedStatementCreator() {
+                @Override
+                public PreparedStatement createPreparedStatement(Connection connection) throws SQLException {
+
+                    PreparedStatement ps = connection.prepareStatement(SQL_USER_CREATE, Statement.RETURN_GENERATED_KEYS);
+                    ps.setLong(1, user.getUserId());
+                    ps.setString(2, user.getName());
+                    ps.setString(3, user.getScreenName());
+                    ps.setString(4, user.getLocation());
+                    ps.setString(5, user.getDescription());
+                    ps.setString(6, user.getUserCreatedAt());
+                    ps.setLong(7, user.getFavoritesCount());
+                    ps.setLong(8, user.getStatusesCount());
+                    ps.setLong(9, user.getFollowersCount());
+                    ps.setLong(10, user.getFriendsCount());
+                    ps.setString(11, user.getLanguage());
+                    return ps;
+                }
+            }, keyHolder);
+        }
+        catch (Exception dae) {
+            logger.error("Error while storing user data ", dae);
+        }
 
         Long userId = keyHolder.getKey().longValue();
 
@@ -207,47 +215,51 @@ public class TweetDaoImpl implements TweetDao {
 
         // url's are associated to a user
         if(userId != null) {
-
             for (Url url : urlList) {
+                try {
+                    jdbcTemplate.update(new PreparedStatementCreator() {
+                        @Override
+                        public PreparedStatement createPreparedStatement(Connection connection) throws SQLException {
 
-                jdbcTemplate.update(new PreparedStatementCreator() {
-                    @Override
-                    public PreparedStatement createPreparedStatement(Connection connection) throws SQLException {
+                            PreparedStatement ps = connection.prepareStatement(SQL_URL_CREATE);
 
-                        PreparedStatement ps = connection.prepareStatement(SQL_URL_CREATE);
+                            ps.setString(1, url.getUrl());
+                            ps.setString(2, url.getExpandedUrl());
+                            ps.setString(3, url.getDisplayUrl());
+                            ps.setLong(4, userId);
+                            ps.setNull(5, Types.NULL);
 
-                        ps.setString(1, url.getUrl());
-                        ps.setString(2, url.getExpandedUrl());
-                        ps.setString(3, url.getDisplayUrl());
-                        ps.setLong(4, userId);
-                        ps.setNull(5, Types.NULL);
-
-                        return ps;
-                    }
-                });
+                            return ps;
+                        }
+                    });
+                } catch (Exception ue) {
+                    logger.error("Error while storing url data ", ue);
+                }
             }
         }
 
         // url's are associated to a tweet
         if(tweetId != null) {
-
             for (Url url : urlList) {
+                try {
+                    jdbcTemplate.update(new PreparedStatementCreator() {
+                        @Override
+                        public PreparedStatement createPreparedStatement(Connection connection) throws SQLException {
 
-                jdbcTemplate.update(new PreparedStatementCreator() {
-                    @Override
-                    public PreparedStatement createPreparedStatement(Connection connection) throws SQLException {
+                            PreparedStatement ps = connection.prepareStatement(SQL_URL_CREATE);
 
-                        PreparedStatement ps = connection.prepareStatement(SQL_URL_CREATE);
+                            ps.setString(1, url.getUrl());
+                            ps.setString(2, url.getExpandedUrl());
+                            ps.setString(3, url.getDisplayUrl());
+                            ps.setNull(4, Types.NULL);
+                            ps.setLong(5, tweetId);
 
-                        ps.setString(1, url.getUrl());
-                        ps.setString(2, url.getExpandedUrl());
-                        ps.setString(3, url.getDisplayUrl());
-                        ps.setNull(4, Types.NULL);
-                        ps.setLong(5, tweetId);
-
-                        return ps;
-                    }
-                });
+                            return ps;
+                        }
+                    });
+                } catch (Exception ue) {
+                    logger.error("Error while storing url data ", ue);
+                }
             }
         }
     }
@@ -257,23 +269,28 @@ public class TweetDaoImpl implements TweetDao {
 
         KeyHolder keyHolder = new GeneratedKeyHolder();
 
-        jdbcTemplate.update(new PreparedStatementCreator() {
-            @Override
-            public PreparedStatement createPreparedStatement(Connection connection) throws SQLException {
-                PreparedStatement ps = connection.prepareStatement(SQL_TWEET_CREATE, Statement.RETURN_GENERATED_KEYS);
-                ps.setString(1, tweet.getTweetCreatedAt());
-                ps.setLong(2, tweet.getTweetId());
-                ps.setLong(3, (userId));
-                ps.setString(4, tweet.getText());
-                ps.setString(5, tweet.getSource());
-                ps.setString(6, tweet.getLanguage());
-                ps.setLong(7, tweet.getRetweetCount());
-                ps.setLong(8, tweet.getFavoriteCount());
-                ps.setBoolean(9, tweet.getRetweeted());
-                ps.setBoolean(10, tweet.getFavorited());
-                return ps;
-            }
-        }, keyHolder);
+        try {
+            jdbcTemplate.update(new PreparedStatementCreator() {
+                @Override
+                public PreparedStatement createPreparedStatement(Connection connection) throws SQLException {
+                    PreparedStatement ps = connection.prepareStatement(SQL_TWEET_CREATE, Statement.RETURN_GENERATED_KEYS);
+                    ps.setString(1, tweet.getTweetCreatedAt());
+                    ps.setLong(2, tweet.getTweetId());
+                    ps.setLong(3, (userId));
+                    ps.setString(4, tweet.getText());
+                    ps.setString(5, tweet.getSource());
+                    ps.setString(6, tweet.getLanguage());
+                    ps.setLong(7, tweet.getRetweetCount());
+                    ps.setLong(8, tweet.getFavoriteCount());
+                    ps.setBoolean(9, tweet.getFavorited());
+                    ps.setBoolean(10, tweet.getRetweeted());
+                    ps.setBoolean(11, tweet.getTruncated());
+                    return ps;
+                }
+            }, keyHolder);
+        } catch (Exception te) {
+            logger.error("Error while storing tweet data ", te);
+        }
 
         long tweetId = keyHolder.getKey().longValue();
 
