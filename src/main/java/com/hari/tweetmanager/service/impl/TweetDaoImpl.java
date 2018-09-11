@@ -6,15 +6,18 @@ import com.amazonaws.util.json.JSONObject;
 import com.hari.tweetmanager.dto.Tweet;
 import com.hari.tweetmanager.dto.Url;
 import com.hari.tweetmanager.dto.User;
+import com.hari.tweetmanager.mapper.UserRecordMapper;
 import com.hari.tweetmanager.service.AuthDao;
 import com.hari.tweetmanager.service.TweetDao;
 import com.hari.tweetmanager.service.TweetMapper;
 import com.hari.tweetmanager.utils.HttpUtils;
+import com.hari.tweetmanager.utils.MySqlQueries;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.WebResource;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementCreator;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -41,21 +44,6 @@ public class TweetDaoImpl implements TweetDao {
     JdbcTemplate jdbcTemplate;
 
     static Logger logger = Logger.getLogger(TweetDaoImpl.class);
-
-    public final String SQL_USER_CREATE =
-            "insert into `users`(userId,name,screenName,location, description, userCreatedAt, " +
-                    "favoritesCount,statusesCount,followersCount,friendsCount,language)" +
-                    " values(?,?,?,?,?,?,?,?,?,?,?)";
-
-    public final String SQL_URL_CREATE =
-            "insert into `urls`(url,expandedUrl,displayUrl,userId, tweetId)" +
-                    " values(?,?,?,?,?)";
-
-    public final String SQL_TWEET_CREATE =
-            "insert into `tweets`(tweetCreatedAt,tweetId,userId,text, source, language, " +
-                    "retweetCount,favoriteCount,favorited,retweeted,truncated)" +
-                    " values(?,?,?,?,?,?,?,?,?,?,?)";
-
 
     @Override
     public void getTweets(int count) {
@@ -175,6 +163,13 @@ public class TweetDaoImpl implements TweetDao {
 
         // After storing user in DB - call storeURL to store the URL associated to the user - get Id and store it in user table
 
+        // Check if user already exists
+        User existingUser = getUserById(user.getUserId());
+
+        if(existingUser != null) {
+            return existingUser.getId();
+        }
+
         KeyHolder keyHolder = new GeneratedKeyHolder();
 
         try {
@@ -182,7 +177,8 @@ public class TweetDaoImpl implements TweetDao {
                 @Override
                 public PreparedStatement createPreparedStatement(Connection connection) throws SQLException {
 
-                    PreparedStatement ps = connection.prepareStatement(SQL_USER_CREATE, Statement.RETURN_GENERATED_KEYS);
+                    PreparedStatement ps = connection.prepareStatement(MySqlQueries.SQL_USER_CREATE,
+                                            Statement.RETURN_GENERATED_KEYS);
                     ps.setLong(1, user.getUserId());
                     ps.setString(2, user.getName());
                     ps.setString(3, user.getScreenName());
@@ -221,7 +217,7 @@ public class TweetDaoImpl implements TweetDao {
                         @Override
                         public PreparedStatement createPreparedStatement(Connection connection) throws SQLException {
 
-                            PreparedStatement ps = connection.prepareStatement(SQL_URL_CREATE);
+                            PreparedStatement ps = connection.prepareStatement(MySqlQueries.SQL_URL_CREATE);
 
                             ps.setString(1, url.getUrl());
                             ps.setString(2, url.getExpandedUrl());
@@ -246,7 +242,7 @@ public class TweetDaoImpl implements TweetDao {
                         @Override
                         public PreparedStatement createPreparedStatement(Connection connection) throws SQLException {
 
-                            PreparedStatement ps = connection.prepareStatement(SQL_URL_CREATE);
+                            PreparedStatement ps = connection.prepareStatement(MySqlQueries.SQL_URL_CREATE);
 
                             ps.setString(1, url.getUrl());
                             ps.setString(2, url.getExpandedUrl());
@@ -273,10 +269,11 @@ public class TweetDaoImpl implements TweetDao {
             jdbcTemplate.update(new PreparedStatementCreator() {
                 @Override
                 public PreparedStatement createPreparedStatement(Connection connection) throws SQLException {
-                    PreparedStatement ps = connection.prepareStatement(SQL_TWEET_CREATE, Statement.RETURN_GENERATED_KEYS);
+                    PreparedStatement ps = connection.prepareStatement(MySqlQueries.SQL_TWEET_CREATE,
+                                            Statement.RETURN_GENERATED_KEYS);
                     ps.setString(1, tweet.getTweetCreatedAt());
                     ps.setLong(2, tweet.getTweetId());
-                    ps.setLong(3, (userId));
+                    ps.setLong(3, userId);
                     ps.setString(4, tweet.getText());
                     ps.setString(5, tweet.getSource());
                     ps.setString(6, tweet.getLanguage());
@@ -295,5 +292,20 @@ public class TweetDaoImpl implements TweetDao {
         long tweetId = keyHolder.getKey().longValue();
 
         return tweetId;
+    }
+
+    public User getUserById(Long userId) {
+
+        try {
+            User userObject = jdbcTemplate.queryForObject(
+                    MySqlQueries.SQL_USER_GET_BY_ID,
+                    new Object[]{userId},
+                    new UserRecordMapper());
+
+            return userObject;
+        } catch (EmptyResultDataAccessException e) {
+            logger.info("No user found with a userId : " + userId);
+            return null;
+        }
     }
 }

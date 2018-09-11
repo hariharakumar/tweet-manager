@@ -4,6 +4,7 @@ import java.util.List;
 
 // This represents entity that tweets - these tweets appear in a users timeline
 public class User {
+    Long id;
     Long userId;
     String name;
     String screenName;
@@ -16,6 +17,14 @@ public class User {
     Long followersCount;
     Long friendsCount;
     String language;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
 
     public Long getUserId() {
         return userId;

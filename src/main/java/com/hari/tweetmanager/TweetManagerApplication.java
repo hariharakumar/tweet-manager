@@ -32,6 +32,7 @@ public class TweetManagerApplication implements CommandLineRunner {
 
 		tweetDao.getTweets(5);
 
+		// Retrieving 10 tweets from DB
 		JSONArray tweets = tweetDao.getTweets();
 
 		tweetDao.storeTweetsInDatabase(tweets);
