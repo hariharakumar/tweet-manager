@@ -9,14 +9,15 @@ import com.hari.tweetmanager.dto.User;
 import com.hari.tweetmanager.mapper.UserRecordMapper;
 import com.hari.tweetmanager.service.AuthDao;
 import com.hari.tweetmanager.service.TweetDao;
-import com.hari.tweetmanager.service.TweetMapper;
+import com.hari.tweetmanager.mapper.TweetMapper;
+import com.hari.tweetmanager.service.UrlDao;
+import com.hari.tweetmanager.service.UserDao;
 import com.hari.tweetmanager.utils.HttpUtils;
 import com.hari.tweetmanager.utils.MySqlQueries;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.WebResource;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DataAccessException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementCreator;
@@ -39,6 +40,12 @@ public class TweetDaoImpl implements TweetDao {
 
     @Autowired
     TweetMapper tweetMapper;
+
+    @Autowired
+    UserDao userDao;
+
+    @Autowired
+    UrlDao urlDao;
 
     @Autowired
     JdbcTemplate jdbcTemplate;
@@ -145,117 +152,16 @@ public class TweetDaoImpl implements TweetDao {
 
                 Tweet tweet = tweetMapper.convertToTweetObject(tweetsJSONObject);
 
-                long userId = storeUser(tweet.getUser());
+                // Create user first - pass that Id to save URL's and also to save tweets
+                long userId = userDao.storeUser(tweet.getUser());
 
                 long tweetId = storeTweet(tweet, userId);
 
-                storeUrls(tweet.getUrls(), null, tweetId);
+                urlDao.storeUrls(tweet.getUrls(), null, tweetId);
 
             }
             catch (JSONException jse) {
                 logger.error("Error while parsing tweet json object" , jse);
-            }
-        }
-    }
-
-    // Create user first - pass that Id to save URL's and also to save tweets
-    public long storeUser(User user) {
-
-        // After storing user in DB - call storeURL to store the URL associated to the user - get Id and store it in user table
-
-        // Check if user already exists
-        User existingUser = getUserById(user.getUserId());
-
-        if(existingUser != null) {
-            return existingUser.getId();
-        }
-
-        KeyHolder keyHolder = new GeneratedKeyHolder();
-
-        try {
-            jdbcTemplate.update(new PreparedStatementCreator() {
-                @Override
-                public PreparedStatement createPreparedStatement(Connection connection) throws SQLException {
-
-                    PreparedStatement ps = connection.prepareStatement(MySqlQueries.SQL_USER_CREATE,
-                                            Statement.RETURN_GENERATED_KEYS);
-                    ps.setLong(1, user.getUserId());
-                    ps.setString(2, user.getName());
-                    ps.setString(3, user.getScreenName());
-                    ps.setString(4, user.getLocation());
-                    ps.setString(5, user.getDescription());
-                    ps.setString(6, user.getUserCreatedAt());
-                    ps.setLong(7, user.getFavoritesCount());
-                    ps.setLong(8, user.getStatusesCount());
-                    ps.setLong(9, user.getFollowersCount());
-                    ps.setLong(10, user.getFriendsCount());
-                    ps.setString(11, user.getLanguage());
-                    return ps;
-                }
-            }, keyHolder);
-        }
-        catch (Exception dae) {
-            logger.error("Error while storing user data ", dae);
-        }
-
-        Long userId = keyHolder.getKey().longValue();
-
-        List<Url> userUrls = user.getUrls();
-
-        storeUrls(userUrls, userId, null);
-
-        return userId;
-    }
-
-    public void storeUrls(List<Url> urlList, Long userId, Long tweetId) {
-
-        // url's are associated to a user
-        if(userId != null) {
-            for (Url url : urlList) {
-                try {
-                    jdbcTemplate.update(new PreparedStatementCreator() {
-                        @Override
-                        public PreparedStatement createPreparedStatement(Connection connection) throws SQLException {
-
-                            PreparedStatement ps = connection.prepareStatement(MySqlQueries.SQL_URL_CREATE);
-
-                            ps.setString(1, url.getUrl());
-                            ps.setString(2, url.getExpandedUrl());
-                            ps.setString(3, url.getDisplayUrl());
-                            ps.setLong(4, userId);
-                            ps.setNull(5, Types.NULL);
-
-                            return ps;
-                        }
-                    });
-                } catch (Exception ue) {
-                    logger.error("Error while storing url data ", ue);
-                }
-            }
-        }
-
-        // url's are associated to a tweet
-        if(tweetId != null) {
-            for (Url url : urlList) {
-                try {
-                    jdbcTemplate.update(new PreparedStatementCreator() {
-                        @Override
-                        public PreparedStatement createPreparedStatement(Connection connection) throws SQLException {
-
-                            PreparedStatement ps = connection.prepareStatement(MySqlQueries.SQL_URL_CREATE);
-
-                            ps.setString(1, url.getUrl());
-                            ps.setString(2, url.getExpandedUrl());
-                            ps.setString(3, url.getDisplayUrl());
-                            ps.setNull(4, Types.NULL);
-                            ps.setLong(5, tweetId);
-
-                            return ps;
-                        }
-                    });
-                } catch (Exception ue) {
-                    logger.error("Error while storing url data ", ue);
-                }
             }
         }
     }
@@ -292,20 +198,5 @@ public class TweetDaoImpl implements TweetDao {
         long tweetId = keyHolder.getKey().longValue();
 
         return tweetId;
-    }
-
-    public User getUserById(Long userId) {
-
-        try {
-            User userObject = jdbcTemplate.queryForObject(
-                    MySqlQueries.SQL_USER_GET_BY_ID,
-                    new Object[]{userId},
-                    new UserRecordMapper());
-
-            return userObject;
-        } catch (EmptyResultDataAccessException e) {
-            logger.info("No user found with a userId : " + userId);
-            return null;
-        }
     }
 }

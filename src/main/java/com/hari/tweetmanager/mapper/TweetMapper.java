@@ -1,4 +1,4 @@
-package com.hari.tweetmanager.service;
+package com.hari.tweetmanager.mapper;
 
 import com.amazonaws.util.json.JSONArray;
 import com.amazonaws.util.json.JSONException;
