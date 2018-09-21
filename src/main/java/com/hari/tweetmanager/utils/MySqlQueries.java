@@ -20,4 +20,6 @@ public class MySqlQueries {
             ", u.description, u.userCreatedAt, u.favoritesCount, u.statusesCount, u.followersCount" +
             ", u.friendsCount, u.language from `users` u where u.userId=?";
 
+    public static final String SQL_LARGEST_TWEET_ID = "select max(tweetId) from tweets";
+
 }

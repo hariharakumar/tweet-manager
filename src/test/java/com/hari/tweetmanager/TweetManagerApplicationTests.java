@@ -13,4 +13,9 @@ public class TweetManagerApplicationTests {
 	public void contextLoads() {
 	}
 
+	@Test
+	public void testGettingMaxIdFromListOfObjects() {
+
+	}
+
 }

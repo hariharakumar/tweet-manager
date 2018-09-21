@@ -3,10 +3,8 @@ package com.hari.tweetmanager.service.impl;
 import com.amazonaws.util.json.JSONArray;
 import com.amazonaws.util.json.JSONException;
 import com.amazonaws.util.json.JSONObject;
+import com.hari.tweetmanager.Exception.TweetManagerException;
 import com.hari.tweetmanager.dto.Tweet;
-import com.hari.tweetmanager.dto.Url;
-import com.hari.tweetmanager.dto.User;
-import com.hari.tweetmanager.mapper.UserRecordMapper;
 import com.hari.tweetmanager.service.AuthDao;
 import com.hari.tweetmanager.service.TweetDao;
 import com.hari.tweetmanager.mapper.TweetMapper;
@@ -29,8 +27,8 @@ import javax.ws.rs.core.UriBuilder;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.sql.*;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class TweetDaoImpl implements TweetDao {
@@ -93,11 +91,11 @@ public class TweetDaoImpl implements TweetDao {
        while retaining the ability to iterate over the entire available contents of a timeline.
         */
     @Override
-    public JSONArray getTweets() {
+    public List<Tweet> getTweets() {
 
         /*Steps to use max_id and since_id :
         * Make a first request just by using count - Keep track of the lowest id of the tweets received
-        * Make another requests by passing max_id - this value will be (lowestId - 1) you gathered above - again keep track of lowest id of tweets received
+        * Make another requests by passing max_id = (lowestId - 1) you gathered above - again keep track of lowest id of tweets received
         * Make further requests by passing max_id as (lowestTweetId - 1) received in previous requests - Keep doing it.
         *
         * since_id :
@@ -108,29 +106,67 @@ public class TweetDaoImpl implements TweetDao {
         * More Info : https://developer.twitter.com/en/docs/tweets/timelines/guides/working-with-timelines
         * */
 
-        /* Get the tweets from database - if there aren't any -> get 200 tweets and store it in database
+        /* Get the tweets from database - if there aren't any -> get 5 tweets and store it in database
            If you find some tweets, get the max tweetId -> use it as since_id for next request to get tweets
            THERE WON'T BE ANY SLEEP LOGIC -> EACH TIME YOU RUN THE APPLICATION, IT GETS TWEETS AND STORES IT IN DB
            each time you run get 5 tweets at a time and use max_id logic to avoid getting duplicate tweets
             */
 
-        String httpMethod = "GET";
         String requestBaseUrl = "https://api.twitter.com/1.1/statuses/home_timeline.json";
+        String httpMethod = "GET";
 
         HashMap queryParams = new HashMap();
-        queryParams.put("count", String.valueOf("10"));
-
-        JSONArray tweets = new JSONArray();
+        List<Tweet> tweets = new ArrayList<Tweet>();
+        boolean exit = false;
+        int loopCount = 0; // We don't want to loop forever
 
         try {
+            do {
+                // When making first call - check if DB contains any tweets at all
+                Long largestTweetId = getLargestTweetIdInDb();
 
-            String authHeader = authDao.getAuthHeader(httpMethod, requestBaseUrl, queryParams);
-            String tweetData = HttpUtils.sendGetRequest(requestBaseUrl, queryParams, authHeader);
+                // largestTweetId = null in first ever request
+                if (largestTweetId != null) {
+                    queryParams.put("since_id", String.valueOf(largestTweetId));
+                }
 
-            tweets = new JSONArray(tweetData);
+                // number of tweets we want to retrieve in timeline in one call
+                queryParams.put("count", String.valueOf("5"));
 
-            System.out.println("Tweets Count : " + tweets.length());
-            return tweets;
+                String authHeader = authDao.getAuthHeader(httpMethod, requestBaseUrl, queryParams);
+                String tweetData = HttpUtils.sendGetRequest(requestBaseUrl, queryParams, authHeader);
+
+                JSONArray tweetsFromCurrentRequest = new JSONArray(tweetData);
+
+                System.out.println("Tweets Retrieved in the request : " + tweetsFromCurrentRequest.length());
+
+                // We don't have any more tweets to process
+                if(tweetsFromCurrentRequest.length() == 0) {
+                    exit = true;
+                }
+                else {
+                    // Convert JSONObjects to TweetPojo
+                    for (int i = 0; i < tweetsFromCurrentRequest.length(); i++) {
+
+                        JSONObject tweetsJSONObject = tweetsFromCurrentRequest.getJSONObject(i);
+
+                        Tweet tweet = tweetMapper.convertToTweetObject(tweetsJSONObject);
+
+                        tweets.add(tweet);
+                    }
+
+                    //Find lowest_id received in the current batch - max_id in next request = lowest_id in previous batch - 1
+                    long lowestTweetIdInBatch = tweets.
+                            stream().
+                            mapToLong(tweet -> tweet.getTweetId()).
+                            min().getAsLong();
+                    System.out.println("Least tweetId in the batch : " + lowestTweetIdInBatch);
+
+                    Long maxId = lowestTweetIdInBatch - 1;
+
+                    queryParams.put("max_id", maxId);
+                }
+            } while (exit || loopCount++ == 20);
         }
         catch (JSONException jse) {
             logger.error("JSON Parse Exception : ", jse);
@@ -138,32 +174,40 @@ public class TweetDaoImpl implements TweetDao {
         catch (UnsupportedEncodingException use) {
             logger.error("Error while encoding data : ", use);
         }
+        catch (TweetManagerException tme) {
+            logger.error(tme.getMessage());
+        }
 
         return tweets;
     }
 
     @Override
-    public void storeTweetsInDatabase(JSONArray tweets) {
+    public void storeTweetsInDatabase(List<Tweet> tweets) {
 
-        for(int i=0 ; i< tweets.length(); i++) {
+        for(int i=0 ; i < tweets.size(); i++) {
 
-            try {
-                JSONObject tweetsJSONObject = tweets.getJSONObject(i);
+            Tweet tweet = tweets.get(i);
 
-                Tweet tweet = tweetMapper.convertToTweetObject(tweetsJSONObject);
+            // Create user first - pass that Id to save URL's and also to save tweets
+            long userId = userDao.storeUser(tweet.getUser());
 
-                // Create user first - pass that Id to save URL's and also to save tweets
-                long userId = userDao.storeUser(tweet.getUser());
+            long tweetId = storeTweet(tweet, userId);
 
-                long tweetId = storeTweet(tweet, userId);
-
-                urlDao.storeUrls(tweet.getUrls(), null, tweetId);
-
-            }
-            catch (JSONException jse) {
-                logger.error("Error while parsing tweet json object" , jse);
-            }
+            urlDao.storeUrls(tweet.getUrls(), null, tweetId);
         }
+    }
+
+    @Override
+    public Long getLargestTweetIdInDb() {
+        Long largestTweetId = null;
+
+        try {
+            largestTweetId = jdbcTemplate.queryForObject(MySqlQueries.SQL_LARGEST_TWEET_ID, Long.class);
+        } catch (EmptyResultDataAccessException e) {
+            logger.info("Did not find any tweet in DB ", e);
+        }
+
+        return largestTweetId;
     }
 
     public long storeTweet(Tweet tweet, Long userId) {
