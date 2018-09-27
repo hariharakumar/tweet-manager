@@ -125,13 +125,13 @@ public class TweetDaoImpl implements TweetDao {
                 // When making first call - check if DB contains any tweets at all
                 Long largestTweetId = getLargestTweetIdInDb();
 
-                // largestTweetId = null in first ever request
+                // largestTweetId = null in very first request when DB has no records
                 if (largestTweetId != null) {
-                    queryParams.put("since_id", String.valueOf(largestTweetId));
+                    queryParams.put("since_id", largestTweetId.toString());
                 }
 
                 // number of tweets we want to retrieve in timeline in one call
-                queryParams.put("count", String.valueOf("5"));
+                queryParams.put("count", "5");
 
                 String authHeader = authDao.getAuthHeader(httpMethod, requestBaseUrl, queryParams);
                 String tweetData = HttpUtils.sendGetRequest(requestBaseUrl, queryParams, authHeader);
@@ -164,7 +164,7 @@ public class TweetDaoImpl implements TweetDao {
 
                     Long maxId = lowestTweetIdInBatch - 1;
 
-                    queryParams.put("max_id", maxId);
+                    queryParams.put("max_id", maxId.toString());
                 }
             } while (exit || loopCount++ == 20);
         }

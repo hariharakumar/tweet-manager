@@ -66,13 +66,23 @@ public class AuthDaoImpl implements AuthDao {
             String encodedOAuthToken           = URLEncoder.encode(oAuthToken,"UTF-8");
             String encodedOAuthVersion         = URLEncoder.encode(oAuthVersion,"UTF-8");
 
-            String singleQuote                 = "\"";
+            String quote                       = "\"";
             String commaAndSpace               = ", ";
 
 
-            for (String key : queryParamsKeys) {
-                encodeQueryParams.append(URLEncoder.encode(key, "UTF-8")).append("=").append(URLEncoder.encode(queryParams.get(key), "UTF-8")).append("&");
-            }
+            /*for (String key : queryParamsKeys) {
+                encodeQueryParams.append(URLEncoder.encode(key, "UTF-8")).
+                                  append("=").
+                                  append(URLEncoder.encode(queryParams.get(key), "UTF-8")).
+                                  append("&");
+            }*/
+
+            // OAuth requires parameters to be sorted alphabetically
+
+            encodeQueryParams.append(URLEncoder.encode("count", "UTF-8")).
+                    append("=").
+                    append(URLEncoder.encode(queryParams.get("count"), "UTF-8")).
+                    append("&");
 
             // There will be an & at the end of queryParamsString
             parameterString.append(encodeQueryParams).
@@ -81,7 +91,11 @@ public class AuthDaoImpl implements AuthDao {
                             append(oAuthSignatureMethodString + "=" + encodedOAuthSignatureMethod).append("&").
                             append(oAuthTimeStampString + "=" + encodedEpochTime).append("&").
                             append(oAuthTokenString + "=" + encodedOAuthToken).append("&").
-                            append(oAuthVersionString + "=" + encodedOAuthVersion);
+                            append(oAuthVersionString + "=" + encodedOAuthVersion).append("&");
+
+            parameterString.append(URLEncoder.encode("since_id", "UTF-8")).
+                    append("=").
+                    append(URLEncoder.encode(queryParams.get("since_id"), "UTF-8"));
 
             // Signature base string should contain only 2 &
             signatureBaseString.append(httpMethod.toUpperCase()).append("&").
@@ -101,13 +115,13 @@ public class AuthDaoImpl implements AuthDao {
 
             // Append all 7 keys to final headerString
             headerString.append("OAuth ").
-                         append(oAuthConsumerKeyString).append("=").append(singleQuote).append(encodedConsumerKey).append(singleQuote).append(commaAndSpace).
-                         append(oAuthNonceString).append("=").append(singleQuote).append(encodedNonceString).append(singleQuote).append(commaAndSpace).
-                         append(oAuthSignatureKeyString).append("=").append(singleQuote).append(encodedOAuthSignature).append(singleQuote).append(commaAndSpace).
-                         append(oAuthSignatureMethodString).append("=").append(singleQuote).append(encodedOAuthSignatureMethod).append(singleQuote).append(commaAndSpace).
-                         append(oAuthTimeStampString).append("=").append(singleQuote).append(encodedEpochTime).append(singleQuote).append(commaAndSpace).
-                         append(oAuthTokenString).append("=").append(singleQuote).append(encodedOAuthToken).append(singleQuote).append(commaAndSpace).
-                         append(oAuthVersionString).append("=").append(singleQuote).append(encodedOAuthVersion).append(singleQuote);
+                         append(oAuthConsumerKeyString).append("=").append(quote).append(encodedConsumerKey).append(quote).append(commaAndSpace).
+                         append(oAuthNonceString).append("=").append(quote).append(encodedNonceString).append(quote).append(commaAndSpace).
+                         append(oAuthSignatureKeyString).append("=").append(quote).append(encodedOAuthSignature).append(quote).append(commaAndSpace).
+                         append(oAuthSignatureMethodString).append("=").append(quote).append(encodedOAuthSignatureMethod).append(quote).append(commaAndSpace).
+                         append(oAuthTimeStampString).append("=").append(quote).append(encodedEpochTime).append(quote).append(commaAndSpace).
+                         append(oAuthTokenString).append("=").append(quote).append(encodedOAuthToken).append(quote).append(commaAndSpace).
+                         append(oAuthVersionString).append("=").append(quote).append(encodedOAuthVersion).append(quote);
 
         }
         catch (UnsupportedEncodingException use) {

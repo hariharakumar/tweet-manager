@@ -27,7 +27,7 @@ public class HttpUtils {
         Client client = Client.create();
         URI baseURI = UriBuilder.fromUri(requestBaseUrl).build();
         WebResource webResource = client.resource(baseURI);
-        MultivaluedMap queryParameters = new MultivaluedMapImpl();
+        MultivaluedMap<String, String> queryParameters = new MultivaluedMapImpl();
         List<Integer> allowedStatuses = Arrays.asList(Response.Status.OK.getStatusCode(), Response.Status.NOT_FOUND.getStatusCode());
 
         // URL Encode the query parameters
@@ -44,12 +44,15 @@ public class HttpUtils {
                             .header("Host", "api.twitter.com")
                             .get(ClientResponse.class);
 
-        logger.info("GET Request sent. Response Status : " + response.getStatus() + " , Response " + response.getEntity(String.class));
+        logger.info("GET Request sent. Response Status : " +
+                response.getStatus() + " , Response " + response.getEntity(String.class));
 
         if(!allowedStatuses.contains(response.getStatus())) {
             throw new TweetManagerException("Received response : " + response.getStatus() + " on a GET request");
         }
         return response.getEntity(String.class);
     }
+
+
 
 }
