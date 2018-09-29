@@ -44,13 +44,16 @@ public class HttpUtils {
                             .header("Host", "api.twitter.com")
                             .get(ClientResponse.class);
 
+        String responseData = response.getEntity(String.class);
+
         logger.info("GET Request sent. Response Status : " +
-                response.getStatus() + " , Response " + response.getEntity(String.class));
+                response.getStatus() + " , Response " + responseData);
 
         if(!allowedStatuses.contains(response.getStatus())) {
             throw new TweetManagerException("Received response : " + response.getStatus() + " on a GET request");
         }
-        return response.getEntity(String.class);
+
+        return responseData;
     }
 
 
