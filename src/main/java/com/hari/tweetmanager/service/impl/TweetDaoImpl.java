@@ -71,7 +71,7 @@ public class TweetDaoImpl implements TweetDao {
                               .header("User-Agent","OAuth gem v0.4.4")
                               .header("Host","api.twitter.com")
                               .get(String.class);
-            System.out.println("Response from Twitter API : " + tweetData);
+            logger.debug("Response from Twitter API : " + tweetData);
 
             JSONArray tweets = new JSONArray(tweetData);
             logger.info("Tweet Data returned : " + tweets.toString());
@@ -138,7 +138,7 @@ public class TweetDaoImpl implements TweetDao {
 
                 JSONArray tweetsFromCurrentRequest = new JSONArray(tweetData);
 
-                System.out.println("Tweets Retrieved in the request : " + tweetsFromCurrentRequest.length());
+                logger.debug("Tweets Retrieved in the request : " + tweetsFromCurrentRequest.length());
 
                 // We don't have any more tweets to process
                 if(tweetsFromCurrentRequest.length() == 0) {
@@ -160,7 +160,7 @@ public class TweetDaoImpl implements TweetDao {
                             stream().
                             mapToLong(tweet -> tweet.getTweetId()).
                             min().getAsLong();
-                    System.out.println("Least tweetId in the batch : " + lowestTweetIdInBatch);
+                    logger.debug("Least tweetId in the batch : " + lowestTweetIdInBatch);
 
                     Long maxId = lowestTweetIdInBatch - 1;
 

@@ -5,6 +5,7 @@ import com.hari.tweetmanager.dto.Tweet;
 import com.hari.tweetmanager.service.AuthDao;
 import com.hari.tweetmanager.service.TweetDao;
 import com.hari.tweetmanager.service.impl.HelloMessageDaoImpl;
+import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -16,6 +17,8 @@ import java.util.List;
 @SpringBootApplication
 @PropertySource("file:/var/personal_projects/tweet_manager/application.properties")
 public class TweetManagerApplication implements CommandLineRunner {
+
+	static Logger logger = Logger.getLogger(TweetManagerApplication.class);
 
 	@Autowired
 	private HelloMessageDaoImpl helloService;
@@ -36,9 +39,7 @@ public class TweetManagerApplication implements CommandLineRunner {
 
 	@Override
 	public void run(String... args) throws Exception {
-		System.out.println(helloService.getMessage());
-
-		tweetDao.getTweets(5);
+		logger.debug( "Testing spring autowired annotation " + helloService.getMessage());
 
 		// Retrieving tweets using timeline concept to GET tweets
 		List<Tweet> tweets = tweetDao.getTweets();

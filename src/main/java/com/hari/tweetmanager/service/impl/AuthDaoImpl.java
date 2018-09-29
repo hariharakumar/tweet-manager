@@ -75,6 +75,7 @@ public class AuthDaoImpl implements AuthDao {
             params.put("oauth_token", oAuthToken);
             params.put("oauth_version", oAuthVersion);
 
+            // IMPORTANT : All query params need to be sorted in ascending order for OAuth - if order is missed, authentication fails
             List<String> paramsKeys = new ArrayList<>(params.keySet());
             Collections.sort(paramsKeys);
 

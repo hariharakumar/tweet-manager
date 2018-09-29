@@ -46,7 +46,7 @@ public class HttpUtils {
 
         String responseData = response.getEntity(String.class);
 
-        logger.info("GET Request sent. Response Status : " +
+        logger.debug("GET Request sent. Response Status : " +
                 response.getStatus() + " , Response " + responseData);
 
         if(!allowedStatuses.contains(response.getStatus())) {
