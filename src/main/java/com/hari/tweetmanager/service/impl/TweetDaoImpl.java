@@ -28,7 +28,6 @@ import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.sql.*;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class TweetDaoImpl implements TweetDao {
@@ -117,11 +116,11 @@ public class TweetDaoImpl implements TweetDao {
 
         HashMap queryParams = new HashMap();
         List<Tweet> tweets = new ArrayList<Tweet>();
-        boolean exit = false;
+        boolean allGood = true;
         int loopCount = 0; // We don't want to loop forever
 
-        try {
-            do {
+        do {
+            try {
                 // When making first call - check if DB contains any tweets at all
                 Long largestTweetId = getLargestTweetIdInDb();
 
@@ -141,14 +140,15 @@ public class TweetDaoImpl implements TweetDao {
                 logger.debug("Tweets Retrieved in the request : " + tweetsFromCurrentRequest.length());
 
                 // We don't have any more tweets to process
-                if(tweetsFromCurrentRequest.length() == 0) {
-                    exit = true;
-                }
-                else {
+                if (tweetsFromCurrentRequest.length() == 0) {
+                    allGood = false;
+                } else {
+                    logger.debug("Mapping tweet data into Pojos, processing one at a time");
                     // Convert JSONObjects to TweetPojo
                     for (int i = 0; i < tweetsFromCurrentRequest.length(); i++) {
 
                         JSONObject tweetsJSONObject = tweetsFromCurrentRequest.getJSONObject(i);
+                        logger.debug("Id of the tweet : " + tweetsJSONObject.getLong("id"));
 
                         Tweet tweet = tweetMapper.convertToTweetObject(tweetsJSONObject);
 
@@ -160,29 +160,34 @@ public class TweetDaoImpl implements TweetDao {
                             stream().
                             mapToLong(tweet -> tweet.getTweetId()).
                             min().getAsLong();
-                    logger.debug("Least tweetId in the batch : " + lowestTweetIdInBatch);
+
+                    logger.trace("Smallest tweetId in the batch : " + lowestTweetIdInBatch);
 
                     Long maxId = lowestTweetIdInBatch - 1;
 
                     queryParams.put("max_id", maxId.toString());
                 }
-            } while (exit || loopCount++ == 20);
-        }
-        catch (JSONException jse) {
-            logger.error("JSON Parse Exception : ", jse);
-        }
-        catch (UnsupportedEncodingException use) {
-            logger.error("Error while encoding data : ", use);
-        }
-        catch (TweetManagerException tme) {
-            logger.error(tme.getMessage());
-        }
+            }
+            catch (JSONException jse) {
+                logger.error("JSON Parse Exception : ", jse);
+            }
+            catch (UnsupportedEncodingException use) {
+                logger.error("Error while encoding data : ", use);
+            }
+            catch (TweetManagerException tme) {
+                logger.error(tme.getMessage());
+            }
+        } while (allGood || loopCount++ == 20);
+
+        logger.debug("Total number of tweets retrieved in current batch : " + tweets.size());
 
         return tweets;
     }
 
     @Override
     public void storeTweetsInDatabase(List<Tweet> tweets) {
+
+        logger.debug("Storing tweets returned in a batch in the database");
 
         for(int i=0 ; i < tweets.size(); i++) {
 

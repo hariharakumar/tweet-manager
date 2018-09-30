@@ -41,9 +41,11 @@ public class TweetManagerApplication implements CommandLineRunner {
 	public void run(String... args) throws Exception {
 		logger.debug( "Testing spring autowired annotation " + helloService.getMessage());
 
-		// Retrieving tweets using timeline concept to GET tweets
+		// Retrieving tweets using twitter timeline concept
 		List<Tweet> tweets = tweetDao.getTweets();
 
 		tweetDao.storeTweetsInDatabase(tweets);
+
+		logger.debug("Done storing tweets in database");
 	}
 }

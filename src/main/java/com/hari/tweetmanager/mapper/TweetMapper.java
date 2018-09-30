@@ -63,6 +63,7 @@ public class TweetMapper {
     public User getUser(JSONObject userObjectInTweet) throws JSONException {
 
         User user = new User();
+        List<Url> urls = new ArrayList<>();
 
         user.setUserId(userObjectInTweet.getLong("id"));
 
@@ -74,8 +75,14 @@ public class TweetMapper {
         user.setLocation(userObjectInTweet.getString("location"));
         user.setDescription(userObjectInTweet.getString("description"));
 
-        JSONArray urlArray = userObjectInTweet.getJSONObject("entities").getJSONObject("url").getJSONArray("urls");
-        List<Url> urls = getUrls(urlArray);
+        JSONObject userEntities = userObjectInTweet.getJSONObject("entities");
+
+        if(userEntities.has("url") && userEntities.getJSONObject("url") != null &&
+                (userEntities.getJSONObject("url").getJSONArray("urls")).length() > 0) {
+            JSONArray urlArray = userEntities.getJSONObject("url").getJSONArray("urls");
+
+            urls = getUrls(urlArray);
+        }
 
         user.setUrls(urls);
 

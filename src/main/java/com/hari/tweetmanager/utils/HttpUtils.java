@@ -46,8 +46,7 @@ public class HttpUtils {
 
         String responseData = response.getEntity(String.class);
 
-        logger.debug("GET Request sent. Response Status : " +
-                response.getStatus() + " , Response " + responseData);
+        logger.debug("GET Tweets Request sent. Response Status : " + response.getStatus());
 
         if(!allowedStatuses.contains(response.getStatus())) {
             throw new TweetManagerException("Received response : " + response.getStatus() + " on a GET request");
