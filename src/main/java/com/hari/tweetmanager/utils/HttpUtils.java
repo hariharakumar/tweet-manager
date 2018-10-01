@@ -22,7 +22,7 @@ public class HttpUtils {
 
     static Logger logger = Logger.getLogger(HttpUtils.class);
 
-    public static String sendGetRequest(String requestBaseUrl, HashMap<String, String> queryParams, String authHeader)
+    public static ClientResponse sendGetRequest(String requestBaseUrl, HashMap<String, String> queryParams, String authHeader)
                     throws UnsupportedEncodingException, TweetManagerException {
         Client client = Client.create();
         URI baseURI = UriBuilder.fromUri(requestBaseUrl).build();
@@ -44,15 +44,13 @@ public class HttpUtils {
                             .header("Host", "api.twitter.com")
                             .get(ClientResponse.class);
 
-        String responseData = response.getEntity(String.class);
-
         logger.debug("GET Tweets Request sent. Response Status : " + response.getStatus());
 
         if(!allowedStatuses.contains(response.getStatus())) {
             throw new TweetManagerException("Received response : " + response.getStatus() + " on a GET request");
         }
 
-        return responseData;
+        return response;
     }
 
 

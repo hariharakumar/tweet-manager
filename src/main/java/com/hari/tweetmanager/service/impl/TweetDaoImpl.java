@@ -10,9 +10,12 @@ import com.hari.tweetmanager.service.TweetDao;
 import com.hari.tweetmanager.mapper.TweetMapper;
 import com.hari.tweetmanager.service.UrlDao;
 import com.hari.tweetmanager.service.UserDao;
+import com.hari.tweetmanager.utils.DateTimeUtils;
 import com.hari.tweetmanager.utils.HttpUtils;
 import com.hari.tweetmanager.utils.MySqlQueries;
+import com.mysql.jdbc.exceptions.jdbc4.MySQLIntegrityConstraintViolationException;
 import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -117,7 +120,9 @@ public class TweetDaoImpl implements TweetDao {
         HashMap queryParams = new HashMap();
         List<Tweet> tweets = new ArrayList<Tweet>();
         boolean allGood = true;
-        int loopCount = 0; // We don't want to loop forever
+
+        // This counter helps when trying out new features as we don't want to make more than 15 calls in each interval
+        int loopCount = 0;
 
         do {
             try {
@@ -130,10 +135,24 @@ public class TweetDaoImpl implements TweetDao {
                 }
 
                 // number of tweets we want to retrieve in timeline in one call
-                queryParams.put("count", "5");
+                queryParams.put("count", "10");
 
                 String authHeader = authDao.getAuthHeader(httpMethod, requestBaseUrl, queryParams);
-                String tweetData = HttpUtils.sendGetRequest(requestBaseUrl, queryParams, authHeader);
+
+                ClientResponse tweetResponse = HttpUtils.sendGetRequest(requestBaseUrl, queryParams, authHeader);
+
+                Long requestsLeft = Long.parseLong(tweetResponse.getHeaders().get("x-rate-limit-remaining").get(0));
+
+                // Standard API's can only make 15 requests in 15 minutes time window
+                if(requestsLeft == 0) {
+                    Long remainingTimeInEpochSecs = Long.parseLong(tweetResponse.getHeaders().get("x-rate-limit-reset").get(0));
+
+                    logger.info("Do not send any more requests to twitter API for " +
+                                (remainingTimeInEpochSecs - DateTimeUtils.getCurrentTimeInSecondsInEpoch()) + " seconds. 15 requests per 15 minutes cap reached");
+                    break;
+                }
+
+                String tweetData = tweetResponse.getEntity(String.class);
 
                 JSONArray tweetsFromCurrentRequest = new JSONArray(tweetData);
 
@@ -176,8 +195,10 @@ public class TweetDaoImpl implements TweetDao {
             }
             catch (TweetManagerException tme) {
                 logger.error(tme.getMessage());
+                break;
             }
-        } while (allGood || loopCount++ == 20);
+
+        } while (allGood || loopCount++ == 5);
 
         logger.debug("Total number of tweets retrieved in current batch : " + tweets.size());
 
@@ -190,15 +211,20 @@ public class TweetDaoImpl implements TweetDao {
         logger.debug("Storing tweets returned in a batch in the database");
 
         for(int i=0 ; i < tweets.size(); i++) {
+            try {
 
-            Tweet tweet = tweets.get(i);
+                Tweet tweet = tweets.get(i);
 
-            // Create user first - pass that Id to save URL's and also to save tweets
-            long userId = userDao.storeUser(tweet.getUser());
+                // Create user first - pass that Id to save URL's and also to save tweets
+                long userId = userDao.storeUser(tweet.getUser());
 
-            long tweetId = storeTweet(tweet, userId);
+                long tweetId = storeTweet(tweet, userId);
 
-            urlDao.storeUrls(tweet.getUrls(), null, tweetId);
+                urlDao.storeUrls(tweet.getUrls(), null, tweetId);
+            }
+            catch (TweetManagerException tme) {
+                logger.error(tme);
+            }
         }
     }
 
@@ -215,7 +241,7 @@ public class TweetDaoImpl implements TweetDao {
         return largestTweetId;
     }
 
-    public long storeTweet(Tweet tweet, Long userId) {
+    public long storeTweet(Tweet tweet, Long userId) throws TweetManagerException {
         // Save userId in tweets table
 
         KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -241,7 +267,7 @@ public class TweetDaoImpl implements TweetDao {
                 }
             }, keyHolder);
         } catch (Exception te) {
-            logger.error("Error while storing tweet data ", te);
+            throw new TweetManagerException("Error while storing tweet data ", te);
         }
 
         long tweetId = keyHolder.getKey().longValue();

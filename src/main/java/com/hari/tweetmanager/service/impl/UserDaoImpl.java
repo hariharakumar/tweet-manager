@@ -1,5 +1,6 @@
 package com.hari.tweetmanager.service.impl;
 
+import com.hari.tweetmanager.Exception.TweetManagerException;
 import com.hari.tweetmanager.dto.Url;
 import com.hari.tweetmanager.dto.User;
 import com.hari.tweetmanager.mapper.UserRecordMapper;
@@ -33,7 +34,7 @@ public class UserDaoImpl implements UserDao {
     UrlDao urlDao;
 
     @Override
-    public long storeUser(User user) {
+    public long storeUser(User user) throws TweetManagerException {
 
         // After storing user in DB - call storeURL to store the URL associated to the user - get Id and store it in user table
 
@@ -69,7 +70,7 @@ public class UserDaoImpl implements UserDao {
             }, keyHolder);
         }
         catch (Exception dae) {
-            logger.error("Error while storing user data ", dae);
+            throw new TweetManagerException("Error while storing user data ", dae);
         }
 
         Long userId = keyHolder.getKey().longValue();
@@ -92,7 +93,7 @@ public class UserDaoImpl implements UserDao {
 
             return userObject;
         } catch (EmptyResultDataAccessException e) {
-            logger.info("No user found with a userId : " + userId);
+            logger.info("No user found with a userId : " + userId); // This is ok - it means user will be created next
             return null;
         }
     }
