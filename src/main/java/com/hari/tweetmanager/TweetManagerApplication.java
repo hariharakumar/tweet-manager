@@ -3,6 +3,7 @@ package com.hari.tweetmanager;
 import com.amazonaws.util.json.JSONArray;
 import com.hari.tweetmanager.dto.Tweet;
 import com.hari.tweetmanager.service.AuthDao;
+import com.hari.tweetmanager.service.FavoriteDao;
 import com.hari.tweetmanager.service.TweetDao;
 import com.hari.tweetmanager.service.impl.HelloMessageDaoImpl;
 import org.apache.log4j.Logger;
@@ -26,6 +27,9 @@ public class TweetManagerApplication implements CommandLineRunner {
 	@Autowired
 	private TweetDao tweetDao;
 
+	@Autowired
+	private FavoriteDao favoriteDao;
+
 	public static void main(String[] args) {
 		SpringApplication.run(TweetManagerApplication.class, args);
 	}
@@ -47,5 +51,7 @@ public class TweetManagerApplication implements CommandLineRunner {
 		tweetDao.storeTweetsInDatabase(tweets);
 
 		logger.debug("Done storing tweets in database");
+
+		favoriteDao.getFavoriteTweets();
 	}
 }

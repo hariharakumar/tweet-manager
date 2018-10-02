@@ -52,38 +52,6 @@ public class TweetDaoImpl implements TweetDao {
 
     static Logger logger = Logger.getLogger(TweetDaoImpl.class);
 
-    @Override
-    public void getTweets(int count) {
-
-        String httpMethod = "GET";
-        String requestBaseUrl = "https://api.twitter.com/1.1/statuses/home_timeline.json";
-
-        HashMap queryParams = new HashMap();
-        queryParams.put("count", String.valueOf(count));
-        String authHeader = authDao.getAuthHeader(httpMethod, requestBaseUrl, queryParams);
-
-        Client client = Client.create();
-        URI baseURI = UriBuilder.fromUri(requestBaseUrl).build();
-        WebResource webResource = client.resource(baseURI);
-
-        try {
-            // URLEncoding is not necessary here as there are no special chars in key or value of query params
-            String tweetData = webResource.queryParam("count",String.valueOf(count))
-                              .header("Authorization", authHeader)
-                              .header("User-Agent","OAuth gem v0.4.4")
-                              .header("Host","api.twitter.com")
-                              .get(String.class);
-            logger.debug("Response from Twitter API : " + tweetData);
-
-            JSONArray tweets = new JSONArray(tweetData);
-            logger.info("Tweet Data returned : " + tweets.toString());
-
-        }
-        catch (JSONException jse) {
-            logger.error("JSON Parse Exception : " , jse);
-        }
-    }
-
     /* Use max_id and since_id  for fetching tweet data
        *max_id* : an application’s first request to a timeline endpoint should only specify a count.
                 When processing this and subsequent responses, keep track of the lowest ID received.
@@ -198,7 +166,7 @@ public class TweetDaoImpl implements TweetDao {
                 break;
             }
 
-        } while (allGood || loopCount++ == 5);
+        } while (allGood && loopCount++ != 4); // we want to loop 5 times in total
 
         logger.debug("Total number of tweets retrieved in current batch : " + tweets.size());
 
@@ -273,5 +241,37 @@ public class TweetDaoImpl implements TweetDao {
         long tweetId = keyHolder.getKey().longValue();
 
         return tweetId;
+    }
+
+    @Override
+    public void getTweets(int count) {
+
+        String httpMethod = "GET";
+        String requestBaseUrl = "https://api.twitter.com/1.1/statuses/home_timeline.json";
+
+        HashMap queryParams = new HashMap();
+        queryParams.put("count", String.valueOf(count));
+        String authHeader = authDao.getAuthHeader(httpMethod, requestBaseUrl, queryParams);
+
+        Client client = Client.create();
+        URI baseURI = UriBuilder.fromUri(requestBaseUrl).build();
+        WebResource webResource = client.resource(baseURI);
+
+        try {
+            // URLEncoding is not necessary here as there are no special chars in key or value of query params
+            String tweetData = webResource.queryParam("count",String.valueOf(count))
+                    .header("Authorization", authHeader)
+                    .header("User-Agent","OAuth gem v0.4.4")
+                    .header("Host","api.twitter.com")
+                    .get(String.class);
+            logger.debug("Response from Twitter API : " + tweetData);
+
+            JSONArray tweets = new JSONArray(tweetData);
+            logger.info("Tweet Data returned : " + tweets.toString());
+
+        }
+        catch (JSONException jse) {
+            logger.error("JSON Parse Exception : " , jse);
+        }
     }
 }
