@@ -10,13 +10,14 @@ import com.hari.tweetmanager.service.TweetDao;
 import com.hari.tweetmanager.mapper.TweetMapper;
 import com.hari.tweetmanager.service.UrlDao;
 import com.hari.tweetmanager.service.UserDao;
+import com.hari.tweetmanager.utils.Constants;
 import com.hari.tweetmanager.utils.DateTimeUtils;
 import com.hari.tweetmanager.utils.HttpUtils;
 import com.hari.tweetmanager.utils.MySqlQueries;
-import com.mysql.jdbc.exceptions.jdbc4.MySQLIntegrityConstraintViolationException;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
+import net.spy.memcached.MemcachedClient;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -36,6 +37,12 @@ import java.util.*;
 public class TweetDaoImpl implements TweetDao {
 
     @Autowired
+    MemcachedClient memcachedClient;
+
+    @Autowired
+    JdbcTemplate jdbcTemplate;
+
+    @Autowired
     AuthDao authDao;
 
     @Autowired
@@ -46,9 +53,6 @@ public class TweetDaoImpl implements TweetDao {
 
     @Autowired
     UrlDao urlDao;
-
-    @Autowired
-    JdbcTemplate jdbcTemplate;
 
     static Logger logger = Logger.getLogger(TweetDaoImpl.class);
 
@@ -92,6 +96,21 @@ public class TweetDaoImpl implements TweetDao {
         // This counter helps when trying out new features as we don't want to make more than 15 calls in each interval
         int loopCount = 0;
 
+        // Query memcache to check if we can make another request
+        try {
+            Long timeTillNextRequest = (Long) memcachedClient.get(Constants.TIME_TILL_NEXT_REQUEST_KEY);
+            Long currentTimeInEpoch = DateTimeUtils.getCurrentTimeInSecondsInEpoch();
+
+            if (timeTillNextRequest != null && currentTimeInEpoch < timeTillNextRequest) {
+                logger.info("You can only make 15 requests in 15 minutes interval to timeline API. Don't make any requests for next : "
+                        + (timeTillNextRequest - currentTimeInEpoch) + " seconds");
+                return tweets;
+            }
+        }
+        catch (Exception e) {
+            logger.error("Error when connecting to memcache" , e);
+        }
+
         do {
             try {
                 // When making first call - check if DB contains any tweets at all
@@ -113,10 +132,11 @@ public class TweetDaoImpl implements TweetDao {
 
                 // Standard API's can only make 15 requests in 15 minutes time window
                 if(requestsLeft == 0) {
-                    Long remainingTimeInEpochSecs = Long.parseLong(tweetResponse.getHeaders().get("x-rate-limit-reset").get(0));
+                    Long timeTillNextRequestInEpoch = Long.parseLong(tweetResponse.getHeaders().get("x-rate-limit-reset").get(0));
 
                     logger.info("Do not send any more requests to twitter API for " +
-                                (remainingTimeInEpochSecs - DateTimeUtils.getCurrentTimeInSecondsInEpoch()) + " seconds. 15 requests per 15 minutes cap reached");
+                                (timeTillNextRequestInEpoch - DateTimeUtils.getCurrentTimeInSecondsInEpoch()) + " seconds. 15 requests per 15 minutes cap reached");
+                    memcachedClient.set(Constants.TIME_TILL_NEXT_REQUEST_KEY, Constants.MEMCACHE_TTL, timeTillNextRequestInEpoch);
                     break;
                 }
 
@@ -135,7 +155,7 @@ public class TweetDaoImpl implements TweetDao {
                     for (int i = 0; i < tweetsFromCurrentRequest.length(); i++) {
 
                         JSONObject tweetsJSONObject = tweetsFromCurrentRequest.getJSONObject(i);
-                        logger.debug("Id of the tweet : " + tweetsJSONObject.getLong("id"));
+                        logger.trace("Id of the tweet : " + tweetsJSONObject.getLong("id"));
 
                         Tweet tweet = tweetMapper.convertToTweetObject(tweetsJSONObject);
 
@@ -176,7 +196,7 @@ public class TweetDaoImpl implements TweetDao {
     @Override
     public void storeTweetsInDatabase(List<Tweet> tweets) {
 
-        logger.debug("Storing tweets returned in a batch in the database");
+        logger.debug("Storing : " + tweets.size() + " tweets returned in a batch in the database");
 
         for(int i=0 ; i < tweets.size(); i++) {
             try {

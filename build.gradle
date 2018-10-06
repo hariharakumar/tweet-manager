@@ -31,7 +31,10 @@ dependencies {
 			[group: 'com.sun.jersey', name: 'jersey-client', version: '1.17.1'],
 			[group: 'com.amazonaws', name: 'aws-java-sdk', version: '1.2.7'],
 			[group: 'mysql', name: 'mysql-connector-java', version: '5.1.21'],
-			[group: 'org.springframework.boot', name:'spring-boot-starter-jdbc',version: '2.0.3.RELEASE']
+			[group: 'org.springframework.boot', name:'spring-boot-starter-jdbc',version: '2.0.3.RELEASE'],
+			[group: 'net.spy', name: 'spymemcached', version: '2.12.0'],
+			[group: 'com.btmatthews.springboot', name:'memcached-spring-boot-starter', version:  '1.1.0']
+
 	)
 	testCompile('org.springframework.boot:spring-boot-starter-test')
 }

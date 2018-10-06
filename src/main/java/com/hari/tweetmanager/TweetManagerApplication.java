@@ -1,6 +1,7 @@
 package com.hari.tweetmanager;
 
 import com.amazonaws.util.json.JSONArray;
+import com.btmatthews.springboot.memcached.EnableMemcached;
 import com.hari.tweetmanager.dto.Tweet;
 import com.hari.tweetmanager.service.AuthDao;
 import com.hari.tweetmanager.service.FavoriteDao;
@@ -16,6 +17,7 @@ import org.springframework.context.annotation.PropertySource;
 import java.util.List;
 
 @SpringBootApplication
+@EnableMemcached
 @PropertySource("file:/var/personal_projects/tweet_manager/application.properties")
 public class TweetManagerApplication implements CommandLineRunner {
 
@@ -39,6 +41,7 @@ public class TweetManagerApplication implements CommandLineRunner {
 	   Ex : @Value("${jwt.secret.key}")
   			private String jwtSecretKey;
   	   //TODO : Write signature definitions to each method - using /** and then enter
+  	   //TODO : Use Elastic search to store data and learn to retrieve it.
   	*/
 
 	@Override
@@ -50,7 +53,7 @@ public class TweetManagerApplication implements CommandLineRunner {
 
 		tweetDao.storeTweetsInDatabase(tweets);
 
-		logger.debug("Done storing tweets in database");
+		logger.debug("Done storing : " + tweets.size() + " tweets in database");
 
 		favoriteDao.getFavoriteTweets();
 	}

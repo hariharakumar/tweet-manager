@@ -74,7 +74,7 @@ public class FavoriteDaoImpl implements FavoriteDao {
             for (int i = 0; i < tweetsFromCurrentRequest.length(); i++) {
 
                 JSONObject tweetsJSONObject = tweetsFromCurrentRequest.getJSONObject(i);
-                logger.debug("Id of the tweet : " + tweetsJSONObject.getLong("id"));
+                logger.trace("Id of the tweet : " + tweetsJSONObject.getLong("id"));
 
                 Tweet tweet = tweetMapper.convertToTweetObject(tweetsJSONObject);
 
