@@ -8,18 +8,16 @@ import com.hari.tweetmanager.dto.Tweet;
 import com.hari.tweetmanager.mapper.TweetMapper;
 import com.hari.tweetmanager.service.AuthDao;
 import com.hari.tweetmanager.service.FavoriteDao;
+import com.hari.tweetmanager.utils.Constants;
 import com.hari.tweetmanager.utils.DateTimeUtils;
 import com.hari.tweetmanager.utils.HttpUtils;
-import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.WebResource;
+import net.spy.memcached.MemcachedClient;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import javax.ws.rs.core.UriBuilder;
 import java.io.UnsupportedEncodingException;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -28,6 +26,9 @@ import java.util.List;
 public class FavoriteDaoImpl implements FavoriteDao {
 
     static Logger logger = Logger.getLogger(FavoriteDaoImpl.class);
+
+    @Autowired
+    MemcachedClient memcachedClient;
 
     @Autowired
     AuthDao authDao;
@@ -47,7 +48,17 @@ public class FavoriteDaoImpl implements FavoriteDao {
 
         HashMap queryParams = new HashMap();
         queryParams.put("count", String.valueOf(count));
-        List<Tweet> tweets = new ArrayList<>();
+        List<Tweet> favoriteTweets = new ArrayList<>();
+
+        // Query memcache to check if we can make another request
+        Long timeTillNextRequest = (Long) memcachedClient.get(Constants.TIME_TILL_NEXT_REQUEST_KEY_FAVORITE);
+        Long currentTimeInEpoch = DateTimeUtils.getCurrentTimeInSecondsInEpoch();
+
+        if (timeTillNextRequest != null && currentTimeInEpoch < timeTillNextRequest) {
+            logger.info("You can only make 75 requests in 75 minutes interval to timeline API. Don't make any requests for next : "
+                    + (timeTillNextRequest - currentTimeInEpoch) + " seconds");
+            return favoriteTweets;
+        }
 
         try {
 
@@ -57,19 +68,21 @@ public class FavoriteDaoImpl implements FavoriteDao {
 
             Long requestsLeft = Long.parseLong(tweetResponse.getHeaders().get("x-rate-limit-remaining").get(0));
 
-            // Standard API's can only make 15 requests in 15 minutes time window
+            // Standard API's can make 75 requests in 75 minutes time window to favorites API
             if(requestsLeft == 0) {
-                Long remainingTimeInEpochSecs = Long.parseLong(tweetResponse.getHeaders().get("x-rate-limit-reset").get(0));
+                Long timeTillNextRequestInEpoch = Long.parseLong(tweetResponse.getHeaders().get("x-rate-limit-reset").get(0));
 
-                logger.info("Do not send any more requests to twitter API for " +
-                        (remainingTimeInEpochSecs - DateTimeUtils.getCurrentTimeInSecondsInEpoch()) + " seconds. 15 requests per 15 minutes cap reached");
+                logger.info("Do not send any more requests to twitter favorites API for " +
+                        (timeTillNextRequestInEpoch - DateTimeUtils.getCurrentTimeInSecondsInEpoch()) + " seconds. 15 requests per 15 minutes cap reached");
+
+                memcachedClient.set(Constants.TIME_TILL_NEXT_REQUEST_KEY_FAVORITE, Constants.MEMCACHE_TTL_TIMELINE_RECORD, timeTillNextRequestInEpoch);
             }
 
             String tweetData = tweetResponse.getEntity(String.class);
 
             JSONArray tweetsFromCurrentRequest = new JSONArray(tweetData);
 
-            logger.debug("Got " + tweetsFromCurrentRequest.length() + " tweets favorited by me");
+            logger.debug("Retrieved last" + tweetsFromCurrentRequest.length() + " tweets that are favorited by me");
 
             for (int i = 0; i < tweetsFromCurrentRequest.length(); i++) {
 
@@ -78,7 +91,7 @@ public class FavoriteDaoImpl implements FavoriteDao {
 
                 Tweet tweet = tweetMapper.convertToTweetObject(tweetsJSONObject);
 
-                tweets.add(tweet);
+                favoriteTweets.add(tweet);
             }
 
         }
@@ -92,6 +105,6 @@ public class FavoriteDaoImpl implements FavoriteDao {
             logger.error(tme.getMessage());
         }
 
-        return tweets;
+        return favoriteTweets;
     }
 }

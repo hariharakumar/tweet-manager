@@ -1,9 +1,7 @@
 package com.hari.tweetmanager;
 
-import com.amazonaws.util.json.JSONArray;
 import com.btmatthews.springboot.memcached.EnableMemcached;
 import com.hari.tweetmanager.dto.Tweet;
-import com.hari.tweetmanager.service.AuthDao;
 import com.hari.tweetmanager.service.FavoriteDao;
 import com.hari.tweetmanager.service.TweetDao;
 import com.hari.tweetmanager.service.impl.HelloMessageDaoImpl;

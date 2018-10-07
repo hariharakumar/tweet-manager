@@ -97,18 +97,13 @@ public class TweetDaoImpl implements TweetDao {
         int loopCount = 0;
 
         // Query memcache to check if we can make another request
-        try {
-            Long timeTillNextRequest = (Long) memcachedClient.get(Constants.TIME_TILL_NEXT_REQUEST_KEY);
-            Long currentTimeInEpoch = DateTimeUtils.getCurrentTimeInSecondsInEpoch();
+        Long timeTillNextRequest = (Long) memcachedClient.get(Constants.TIME_TILL_NEXT_REQUEST_KEY_TIMELINE);
+        Long currentTimeInEpoch = DateTimeUtils.getCurrentTimeInSecondsInEpoch();
 
-            if (timeTillNextRequest != null && currentTimeInEpoch < timeTillNextRequest) {
-                logger.info("You can only make 15 requests in 15 minutes interval to timeline API. Don't make any requests for next : "
-                        + (timeTillNextRequest - currentTimeInEpoch) + " seconds");
-                return tweets;
-            }
-        }
-        catch (Exception e) {
-            logger.error("Error when connecting to memcache" , e);
+        if (timeTillNextRequest != null && currentTimeInEpoch < timeTillNextRequest) {
+            logger.info("You can only make 15 requests in 15 minutes interval to timeline API. Don't make any requests for next : "
+                    + (timeTillNextRequest - currentTimeInEpoch) + " seconds");
+            return tweets;
         }
 
         do {
@@ -136,7 +131,7 @@ public class TweetDaoImpl implements TweetDao {
 
                     logger.info("Do not send any more requests to twitter API for " +
                                 (timeTillNextRequestInEpoch - DateTimeUtils.getCurrentTimeInSecondsInEpoch()) + " seconds. 15 requests per 15 minutes cap reached");
-                    memcachedClient.set(Constants.TIME_TILL_NEXT_REQUEST_KEY, Constants.MEMCACHE_TTL, timeTillNextRequestInEpoch);
+                    memcachedClient.set(Constants.TIME_TILL_NEXT_REQUEST_KEY_TIMELINE, Constants.MEMCACHE_TTL_FAVORITE_RECORD, timeTillNextRequestInEpoch);
                     break;
                 }
 
